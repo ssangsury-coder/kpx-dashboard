@@ -1,0 +1,72 @@
+# 대한민국 전력계통 현황 대시보드 - 15분마다 수집하고 GitHub Pages로 배포
+name: KPX 대시보드 수집·배포
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # 15분마다 (GitHub 사정에 따라 몇 분씩 늦어질 수 있음)
+  workflow_dispatch:          # Actions 탭에서 [Run workflow]로 수동 실행
+
+permissions:
+  contents: write   # data 브랜치에 누적 데이터 저장
+  pages: write      # GitHub Pages 배포
+  id-token: write
+
+concurrency:
+  group: kpx-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: 코드 내려받기
+        uses: actions/checkout@v4
+
+      - name: 지난 누적 데이터 불러오기 (data 브랜치)
+        run: |
+          mkdir -p data
+          if git ls-remote --exit-code --heads origin data >/dev/null 2>&1; then
+            git fetch --depth=1 origin data
+            git show FETCH_HEAD:kpx.sqlite > data/kpx.sqlite && echo "누적 데이터 불러옴"
+          else
+            echo "첫 실행: 새로 시작합니다"
+          fi
+
+      - name: 파이썬 준비
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: KPX·한전 데이터 수집
+        env:
+          KPX_SERVICE_KEY: ${{ secrets.KPX_SERVICE_KEY }}
+          KEPCO_API_KEY: ${{ secrets.KEPCO_API_KEY }}
+        run: python collector.py --once
+
+      - name: 누적 데이터 저장 (data 브랜치, 이력 없이 덮어쓰기)
+        run: |
+          cd data
+          git init -q -b data
+          git config user.name "kpx-dashboard-bot"
+          git config user.email "kpx-dashboard-bot@users.noreply.github.com"
+          git add kpx.sqlite
+          git commit -q -m "data $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data:data
+
+      - name: 웹페이지 묶기
+        run: |
+          mkdir -p _site/data
+          cp dashboard.html _site/index.html
+          cp data/dashboard.json _site/data/dashboard.json
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: GitHub Pages 배포
+        id: deploy
+        uses: actions/deploy-pages@v4
