@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>대한민국 전력계통 현황</title>
+<style>
+@font-face{font-family:'Pretendard';font-weight:45 920;font-style:normal;font-display:swap;
+  src:local('Pretendard Variable'),local('Pretendard'),url('https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/woff2/PretendardVariable.woff2') format('woff2-variations');}
+:root{
+  --bg:#EFECE5;--paper:#FAF8F3;--card:#fff;--ink:#1E2938;--ink2:#465263;--mute:#8A93A0;--line:#E3DFD5;
+  --blue:#6F9DCB;--blue-d:#3F6E9E;--blue-l:#DCE8F3;--orange:#E07A3C;--olive:#8E9E5B;--mustard:#D8A23B;--slate:#7C8EA8;--taupe:#A39580;
+  --ok:#5E8C4A;--warn:#D8A23B;--bad:#C8452F;--ease:cubic-bezier(.2,.75,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Pretendard',-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  word-break:keep-all;overflow-wrap:break-word;-webkit-font-smoothing:antialiased;min-height:100vh}
+.wrap{max-width:1360px;margin:0 auto;padding:20px 20px 40px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand i{width:34px;height:34px;border-radius:50%;background:conic-gradient(var(--blue) 0 25%,var(--orange) 0 50%,var(--olive) 0 75%,var(--mustard) 0);position:relative;flex:none}
+.brand i::after{content:"";position:absolute;inset:10px;border-radius:50%;background:var(--bg)}
+.brand h1{font-size:24px;font-weight:850;letter-spacing:-.03em;line-height:1.1}
+.brand h1 em{font-style:normal;color:var(--blue)}
+.brand p{font-size:12px;color:var(--mute);margin-top:3px}
+.status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2)}
+.live{display:inline-flex;align-items:center;gap:7px;font-weight:800;font-size:12px;letter-spacing:.06em;padding:6px 11px;border-radius:20px;background:#fff;border:1px solid var(--line)}
+.live b{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(94,140,74,.6);animation:ping 1.8s infinite}
+.live.sample b{background:var(--mustard);animation:none}
+.live.err b{background:var(--bad);animation:none}
+@keyframes ping{70%{box-shadow:0 0 0 8px rgba(94,140,74,0)}100%{box-shadow:0 0 0 0 rgba(94,140,74,0)}}
+.btn{font-family:inherit;font-size:12px;font-weight:700;border:1px solid var(--line);background:#fff;color:var(--ink);padding:6px 11px;border-radius:8px;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 18px -10px rgba(30,41,56,.5)}
+.notice{background:#FBF1DC;border:1px solid #EBD3A0;color:#7A5A12;font-size:12.5px;padding:10px 14px;border-radius:10px;margin-bottom:16px;display:none;line-height:1.55}
+.notice.show{display:block}
+
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(6,1fr)}
+.r2{grid-template-columns:1.8fr 1fr}
+.r3{grid-template-columns:1.4fr 1fr}
+.r4{grid-template-columns:1.3fr 1fr}
+.r5{grid-template-columns:1.4fr 1fr}
+@media (max-width:1180px){.kpis{grid-template-columns:repeat(3,1fr)}.r2,.r3,.r4,.r5{grid-template-columns:1fr}}
+@media (max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}.wrap{padding:14px 16px 30px}}
+.row{margin-top:16px}
+.sec{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:34px 0 4px;padding-top:18px;border-top:2px solid var(--ink)}
+.sec h2{font-size:20px;font-weight:850;letter-spacing:-.03em}.sec h2 em{font-style:normal;color:var(--blue)}
+.sec p{font-size:12px;color:var(--mute)}
+.kp4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:1180px){.kp4{grid-template-columns:repeat(2,1fr)}}
+.up{color:var(--orange);font-weight:800}.dn{color:var(--blue-d);font-weight:800}
+
+.card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow:hidden;
+  opacity:0;translate:0 16px;animation:rise .8s var(--ease) forwards;animation-delay:calc(var(--d,0)*70ms)}
+@keyframes rise{to{opacity:1;translate:0 0}}
+.tilt{transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .25s ease-out,box-shadow .3s}
+.tilt::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(240px circle at var(--mx,50%) var(--my,50%),rgba(111,157,203,.2),transparent 65%)}
+.tilt:hover{box-shadow:0 18px 36px -18px rgba(30,41,56,.35)}.tilt:hover::before{opacity:1}
+.ch{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.ch h2{font-size:15px;font-weight:750;letter-spacing:-.01em;position:relative;padding-left:12px}
+.ch h2::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:4px;border-radius:2px;background:var(--blue)}
+.pill{display:inline-block;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--blue-l);color:var(--blue-d);white-space:nowrap}
+.pill.o{background:#FBE6D9;color:#B4561F}.pill.g{background:#EAEEDC;color:#5F6D33}
+.lbl{font-size:11px;font-weight:750;letter-spacing:.05em;color:var(--blue-d)}
+.big{font-size:27px;font-weight:850;letter-spacing:-.03em;line-height:1.1;margin-top:6px;font-variant-numeric:tabular-nums}
+.big small{font-size:12px;font-weight:600;color:var(--mute);margin-left:3px;letter-spacing:0}
+.sub{font-size:11.5px;color:var(--mute);margin-top:4px;line-height:1.45}
+.bar{height:5px;border-radius:3px;background:var(--line);margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:3px;background:var(--blue);transition:width 1.2s var(--ease)}
+.stage{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:10px;color:#fff;background:var(--ok);margin-left:6px;vertical-align:middle}
+.cb{position:relative}
+.cb canvas{display:block}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.mini div{background:#F6F4EE;border-radius:8px;padding:9px 10px}
+.mini b{display:block;font-size:17px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.mini span{font-size:10.5px;color:var(--mute)}
+.recs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rec{border-left:3px solid var(--blue);padding:6px 0 6px 12px;transition:transform .25s}
+.rec:hover{transform:translateX(4px)}
+.rec b{display:block;font-size:19px;font-weight:850;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.rec span{font-size:11px;color:var(--mute)}
+.rec .k{font-size:11px;font-weight:750;color:var(--ink2)}
+footer{margin-top:22px;font-size:11.5px;color:var(--mute);line-height:1.7;border-top:1px solid var(--line);padding-top:12px}
+footer b{color:var(--ink2)}
+.glow{position:fixed;left:0;top:0;width:460px;height:460px;margin:-230px 0 0 -230px;border-radius:50%;pointer-events:none;z-index:0;
+  background:radial-gradient(closest-side,rgba(111,157,203,.14),transparent);transition:opacity .4s}
+.wrap{position:relative;z-index:1}
+.empty{position:absolute;inset:40px 0 0;display:none;place-items:center;font-size:12.5px;color:var(--mute);text-align:center;padding:20px}
+.cb.noData .empty{display:grid}
+</style>
+</head>
+<body>
+<div class="glow" id="glow"></div>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><i></i><div><h1>대한민국 <em>전력계통 현황</em></h1><p>전력거래소(KPX) 공공데이터 Open API · 5분 단위 수급 · 발전원별 발전량 · SMP</p></div></div>
+    <div class="status">
+      <span class="live" id="live"><b></b><span id="liveTxt">연결 중</span></span>
+      <span>기준 <b id="baseTs">-</b></span>
+      <span>· 화면 갱신 <b id="cd">60</b>초</span>
+      <button class="btn" id="bRefresh">새로고침</button>
+    </div>
+  </header>
+  <div class="notice" id="notice"></div>
+
+  <!-- KPI -->
+  <section class="grid kpis">
+    <div class="card tilt" style="--d:1"><div class="lbl">현재수요</div><div class="big"><span id="kDemand">-</span><small>MW</small></div><div class="sub" id="kDemandSub">-</div><div class="bar"><i id="bDemand"></i></div></div>
+    <div class="card tilt" style="--d:2"><div class="lbl">공급능력</div><div class="big"><span id="kSupply">-</span><small>MW</small></div><div class="sub" id="kSupplySub">-</div><div class="bar"><i id="bSupply" style="background:var(--slate)"></i></div></div>
+    <div class="card tilt" style="--d:3"><div class="lbl">공급예비력 <span class="stage" id="kStage">정상</span></div><div class="big"><span id="kReserve">-</span><small>MW</small></div><div class="sub" id="kReserveSub">-</div><div class="bar"><i id="bReserve" style="background:var(--olive)"></i></div></div>
+    <div class="card tilt" style="--d:4"><div class="lbl" style="color:var(--orange)">SMP · 육지</div><div class="big"><span id="kSmp">-</span><small>원/kWh</small></div><div class="sub" id="kSmpSub">-</div><div class="bar"><i id="bSmp" style="background:var(--orange)"></i></div></div>
+    <div class="card tilt" style="--d:5"><div class="lbl">가스(LNG) 발전</div><div class="big"><span id="kGas">-</span><small>MW</small></div><div class="sub" id="kGasSub">-</div><div class="bar"><i id="bGas" style="background:var(--blue-d)"></i></div></div>
+    <div class="card tilt" style="--d:6"><div class="lbl" style="color:var(--mustard)">태양광(계통)</div><div class="big"><span id="kSolar">-</span><small>MW</small></div><div class="sub" id="kSolarSub">-</div><div class="bar"><i id="bSolar" style="background:var(--mustard)"></i></div></div>
+  </section>
+
+  <section class="grid r2 row">
+    <div class="card" style="--d:3"><div class="ch"><h2>오늘 수요 · 공급능력 · 순부하 (MW)</h2><span class="pill">5분 단위</span></div>
+      <div class="cb" style="height:300px"><canvas id="cSupply"></canvas><div class="empty">수요 데이터를 기다리는 중</div></div></div>
+    <div class="card" style="--d:4"><div class="ch"><h2>현재 발전원 구성</h2><span class="pill" id="mixTs">-</span></div>
+      <div class="cb" style="height:300px"><canvas id="cMix"></canvas><div class="empty">발전원 데이터를 기다리는 중</div></div></div>
+  </section>
+
+  <section class="grid r3 row">
+    <div class="card" style="--d:5"><div class="ch"><h2>발전원별 발전량 (MW, 누적)</h2><span class="pill">계통기준 5분</span></div>
+      <div class="cb" style="height:300px"><canvas id="cGen"></canvas><div class="empty">발전원 데이터를 기다리는 중</div></div></div>
+    <div class="card" style="--d:6"><div class="ch"><h2>공급예비력 추이 (MW)</h2><span class="pill g">비상단계 기준선</span></div>
+      <div class="cb" style="height:300px"><canvas id="cReserve"></canvas><div class="empty">수요 데이터를 기다리는 중</div></div></div>
+  </section>
+
+  <section class="grid r4 row">
+    <div class="card" style="--d:7"><div class="ch"><h2>시간별 SMP (원/kWh)와 예측수요</h2><span class="pill o" id="smpTag">오늘 · 내일</span></div>
+      <div class="cb" style="height:290px"><canvas id="cSmp"></canvas><div class="empty">SMP 데이터를 기다리는 중</div></div></div>
+    <div class="card" style="--d:8"><div class="ch"><h2>LNG 패널 · 가스 출력 vs SMP</h2><span class="pill">시간 평균</span></div>
+      <div class="cb" style="height:200px"><canvas id="cLng"></canvas><div class="empty">가스·SMP 데이터를 기다리는 중</div></div>
+      <div class="mini"><div><b id="mGasMax">-</b><span>오늘 가스 최대</span></div><div><b id="mGasSwing">-</b><span>일중 출력 변동폭</span></div><div><b id="mCorr">-</b><span>가스–SMP 상관계수</span></div></div>
+    </div>
+  </section>
+
+  <section class="grid r5 row">
+    <div class="card" style="--d:9"><div class="ch"><h2>일별 최대수요 · 최소 예비율 (최근 60일)</h2><span class="pill">수집 누적</span></div>
+      <div class="cb" style="height:260px"><canvas id="cHist"></canvas><div class="empty">수집기를 며칠 실행하면 일별 추이가 쌓입니다</div></div></div>
+    <div class="card" style="--d:10"><div class="ch"><h2>기록 트래커</h2><span class="pill" id="recSince">-</span></div>
+      <div class="recs" id="recs"></div></div>
+  </section>
+
+
+  <!-- ===== 한전 통계 ===== -->
+  <div class="sec"><div><h2>한전 <em>전력판매 통계</em> (월간)</h2><p>한국전력 전력데이터 개방포털 Open API · 계약종별/산업분류별 판매량·판매단가, 신재생 설치현황 · 하루 1회 수집</p></div><span class="pill" id="kpMonth">-</span></div>
+  <div class="notice" id="kpNotice" style="margin-top:12px"></div>
+  <section class="grid kp4 row">
+    <div class="card tilt" style="--d:2"><div class="lbl">전체 판매량</div><div class="big"><span id="kpUsage">-</span><small>TWh</small></div><div class="sub" id="kpUsageSub">-</div></div>
+    <div class="card tilt" style="--d:3"><div class="lbl" style="color:var(--orange)">평균 판매단가</div><div class="big"><span id="kpUnit">-</span><small>원/kWh</small></div><div class="sub" id="kpUnitSub">-</div></div>
+    <div class="card tilt" style="--d:4"><div class="lbl">산업용 판매단가</div><div class="big"><span id="kpInd">-</span><small>원/kWh</small></div><div class="sub" id="kpIndSub">-</div></div>
+    <div class="card tilt" style="--d:5"><div class="lbl" style="color:var(--olive)">주택용 판매단가</div><div class="big"><span id="kpRes">-</span><small>원/kWh</small></div><div class="sub" id="kpResSub">-</div></div>
+  </section>
+  <section class="grid r3 row">
+    <div class="card" style="--d:6"><div class="ch"><h2>계약종별 판매단가 추이 (원/kWh)</h2><span class="pill o">판매단가 = 전기요금 / 판매량</span></div>
+      <div class="cb" style="height:290px"><canvas id="kUnit"></canvas><div class="empty">한전 API 키를 넣으면 채워집니다</div></div></div>
+    <div class="card" style="--d:7"><div class="ch"><h2>계약종별 판매량 (TWh)</h2><span class="pill">월별 누적</span></div>
+      <div class="cb" style="height:290px"><canvas id="kUsage"></canvas><div class="empty">한전 API 키를 넣으면 채워집니다</div></div></div>
+  </section>
+  <section class="grid r3 row">
+    <div class="card" style="--d:8"><div class="ch"><h2>산업분류별 전력사용량 상위 (GWh)</h2><span class="pill" id="kIndTag">최근월 · 전년 동월 대비</span></div>
+      <div class="cb" style="height:320px"><canvas id="kInd"></canvas><div class="empty">한전 API 키를 넣으면 채워집니다</div></div></div>
+    <div class="card" style="--d:9"><div class="ch"><h2>신재생 설비 현황 (한전 계약 기준)</h2><span class="pill g" id="kRenTag">-</span></div>
+      <div class="cb" style="height:320px"><canvas id="kRen"></canvas><div class="empty">한전 API 키를 넣으면 채워집니다</div></div></div>
+  </section>
+  <footer>
+    <b>데이터 출처</b> 한국전력거래소 Open API (공공데이터포털): 오늘·현재 전력수급현황, 발전원별 발전량(계통기준), 계통한계가격 및 수요예측(하루전 발전계획용) · 한국전력 전력데이터 개방포털 Open API: 계약종별·산업분류별 전력사용량, 신재생 에너지 현황.<br>
+    · <b>판매단가</b>는 전기요금 합계 ÷ 전력사용량으로 계산한 평균값이며, 한전 월간 통계는 공개까지 1~2개월 시차가 있습니다. 신재생 설비용량은 포털 원자료 단위를 kW로 보고 MW로 환산했습니다.<br>
+    · <b>순부하</b> = 현재수요 − (태양광 + 신재생), 계통기준 값으로 계산하며 계통에 잡히지 않는 자가용 태양광은 포함되지 않습니다.<br>
+    · <b>비상단계</b>는 공급예비력 기준(준비 5.5 GW, 관심 4.5, 주의 3.5, 경계 2.5, 심각 1.5 GW 미만)으로 표시한 참고값입니다.<br>
+    · SMP 시간은 해당 1시간 구간의 끝 시각입니다(예: 6시 = 05:00~06:00). 제주는 실시간시장 시범사업 지역이라 0원 등 육지와 다른 값이 나올 수 있습니다.<br>
+    · 양수 발전량은 양수 충전(펌핑) 중에는 음수로 들어오며, 누적 차트에는 발전분만 표시합니다. 발전원별 데이터는 수집 조건에 따라 달라질 수 있는 참고용 값입니다.
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function(){
+'use strict';
+const C={ink:'#1E2938',ink2:'#465263',mute:'#8A93A0',blue:'#6F9DCB',blueD:'#3F6E9E',orange:'#E07A3C',olive:'#8E9E5B',mustard:'#D8A23B',slate:'#7C8EA8',taupe:'#A39580',line:'rgba(30,41,56,.07)',bad:'#C8452F'};
+const FUELS=[['nuclear','원자력',C.slate],['coal','유연탄',C.taupe],['domcoal','국내탄','#8C7B66'],['gas','가스(LNG)',C.blueD],['oil','유류','#5A4E44'],
+  ['hydro','수력','#6FB1C0'],['pumped','양수','#9CC9D3'],['renew','신재생',C.olive],['solar','태양광',C.mustard]];
+const STAGES=[[1500,'심각','#8E1F12'],[2500,'경계',C.bad],[3500,'주의','#E07A3C'],[4500,'관심','#D8A23B'],[5500,'준비','#C2B43A']];
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>v==null||isNaN(v)?'-':Number(v).toLocaleString('ko-KR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const hhmm=ts=>ts?String(ts).slice(11,16):'';
+
+/* ---------- Chart defaults ---------- */
+if(window.Chart){
+  Chart.defaults.font.family="'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif";
+  Chart.defaults.font.size=11;Chart.defaults.color=C.ink2;Chart.defaults.maintainAspectRatio=false;
+  Chart.defaults.plugins.legend.labels.usePointStyle=true;Chart.defaults.plugins.legend.labels.boxWidth=9;Chart.defaults.plugins.legend.labels.boxHeight=9;
+  Chart.defaults.plugins.tooltip.backgroundColor='rgba(30,41,56,.92)';Chart.defaults.plugins.tooltip.padding=10;Chart.defaults.plugins.tooltip.cornerRadius=6;
+  Chart.defaults.scale.grid.color=C.line;Chart.defaults.scale.border={display:false};
+  Chart.defaults.elements.point.radius=0;Chart.defaults.elements.point.hoverRadius=4;
+  Chart.defaults.interaction={mode:'index',intersect:false};Chart.defaults.animation.duration=900;
+}
+const kTick={callback:v=>(v/1000).toFixed(0)+'k'};
+const tipMW={callbacks:{label:c=>' '+c.dataset.label+': '+fmt(c.parsed.y)+' MW'}};
+const charts={};
+function upsert(id,cfg){
+  if(!window.Chart)return;
+  const box=$(id).parentElement;
+  const has=cfg.data.datasets.some(d=>(d.data||[]).some(v=>v!=null));
+  box.classList.toggle('noData',!has);
+  if(charts[id]){charts[id].data=cfg.data;charts[id].options=cfg.options;charts[id].update();}
+  else charts[id]=new Chart($(id),cfg);
+}
+
+/* ---------- 샘플 데이터 (수집기 실행 전 미리보기용) ---------- */
+function sample(){
+  const now=new Date(), pad=n=>String(n).padStart(2,'0');
+  const day=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  const steps=Math.max(12,Math.floor((now.getHours()*60+now.getMinutes())/5));
+  const sup=[],gen=[];
+  for(let i=1;i<=steps;i++){
+    const m=i*5,h=m/60,ts=day+' '+pad(Math.floor(m/60)%24)+':'+pad(m%60);
+    const dem=62000+7000*Math.sin((h-9)/24*2*Math.PI)+3000*Math.exp(-Math.pow(h-19,2)/6)-2500*Math.exp(-Math.pow(h-13,2)/5);
+    const supply=86000-400*Math.sin(h/3);
+    const solar=Math.max(0,9000*Math.sin((h-6.5)/12*Math.PI));
+    const renew=2600+400*Math.sin(h/2);
+    const nuclear=23500, coal=Math.max(12000,dem*0.24), domcoal=600, hydro=600+300*Math.exp(-Math.pow(h-19,2)/3), pumped=Math.max(0,1500*Math.exp(-Math.pow(h-19.5,2)/2)), oil=150;
+    const gas=Math.max(6000,dem-nuclear-coal-domcoal-hydro-pumped-oil-solar-renew);
+    sup.push({ts,demand:dem,supply,forecast:71500,reserve:supply-dem,reserve_rate:(supply-dem)/dem*100});
+    gen.push({ts,nuclear,coal,domcoal,gas,oil,hydro,pumped,renew,solar,total:nuclear+coal+domcoal+gas+oil+hydro+pumped+renew+solar});
+  }
+  const smp=[...Array(24)].map((_,i)=>Math.round((112+14*Math.sin((i-9)/24*2*Math.PI)-12*Math.exp(-Math.pow(i-12,2)/6)+10*Math.exp(-Math.pow(i-19,2)/4))*100)/100);
+  const hist=[...Array(30)].map((_,k)=>{const d=new Date(now-86400000*(30-k));return{date:d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()),max_demand:68000+5000*Math.sin(k/4),min_reserve_rate:18+6*Math.cos(k/5),gas_share:24+5*Math.sin(k/3),avg_smp:110+8*Math.sin(k/6)}});
+  return {sample:true,generated_at:new Date().toLocaleString('ko-KR'),latest:sup[sup.length-1],latest_gen:gen[gen.length-1],supply_today:sup,gen_today:gen,
+    smp_today:{date:day,mainland:smp,jeju:smp.map(v=>v+6),fcst_total:[...Array(24)].map((_,i)=>62000+7000*Math.sin((i-9)/24*2*Math.PI))},smp_tomorrow:{date:'내일',mainland:smp.map(v=>v-3),jeju:smp.map(v=>v+3),fcst_total:[]},
+    kepco:sampleKepco(),history:hist,records:{max_demand:{v:71840,t:day+' 19:05'},min_reserve:{v:12650,t:day+' 19:05'},max_solar:{v:9000,t:day+' 12:30'},max_gas:{v:24100,t:day+' 19:10'},max_smp:{v:128.4,t:day+' 19시'},min_smp:{v:96.2,t:day+' 13시'},since:day}};
+}
+
+function sampleKepco(){
+  const now=new Date(),m=[];for(let i=24;i>=1;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);m.push(d.getFullYear()+String(d.getMonth()+1).padStart(2,'0'))}
+  const types=[['산업용',25000,182,0],['일반용',11500,176,1],['주택용',7200,150,2],['농사용',1700,78,3],['교육용',800,140,4],['심야',900,95,5],['가로등',300,145,6]];
+  const contract={};types.forEach(([k,u,p,j])=>contract[k]={usage:m.map((_,i)=>(u+u*.12*Math.sin((i+2)/12*2*Math.PI))*1e6),unit:m.map((_,i)=>p+(i>14?6:0)+Math.sin(i/3))});
+  const tu=m.map((_,i)=>types.reduce((a,[k])=>a+contract[k].usage[i],0));const tun=m.map((_,i)=>types.reduce((a,[k])=>a+contract[k].usage[i]*contract[k].unit[i],0)/tu[i]);
+  const ind=[['제조업',21000,2.1],['도매 및 소매업',3100,1.4],['정보통신업',1900,11.8],['부동산업',1500,0.6],['공공행정',1300,0.9],['숙박 및 음식점업',1200,1.1],['교육 서비스업',900,-0.4],['운수 및 창고업',800,3.2],['보건업',700,2.0],['전기·가스 공급업',650,4.5]].map(([biz,g,y])=>({biz,usage:g*1e6,yoy:y,unit:170}));
+  return {months:m,contract,total_usage:tu,total_unit:tun,last:m[23],prev_year:m[11],last_total:{usage:tu[23]},prev_total:{usage:tu[11]},indus:ind,renew_year:String(now.getFullYear()-1),
+    renew:[{gensrc:'태양광',capacity:2.6e7,cnt:150000},{gensrc:'풍력',capacity:2.2e6,cnt:150},{gensrc:'연료전지',capacity:1.1e6,cnt:300},{gensrc:'바이오',capacity:9e5,cnt:200},{gensrc:'소수력',capacity:2e5,cnt:120}],
+    renew_years:[{year:String(now.getFullYear()-2),capacity:2.6e7},{year:String(now.getFullYear()-1),capacity:3.0e7}]};
+}
+
+/* ---------- 렌더 ---------- */
+function stageOf(res){for(const [lim,name,col] of STAGES){if(res<lim)return[name,col]}return['정상','#5E8C4A']}
+function setBar(id,pct){$(id).style.width=Math.max(0,Math.min(100,pct))+'%'}
+
+function render(d){
+  const L=d.latest||{}, G=d.latest_gen||{}, sup=d.supply_today||[], gen=d.gen_today||[];
+  const st=$('live'); st.className='live'+(d.sample?' sample':''); $('liveTxt').textContent=d.sample?'샘플 데이터':'LIVE';
+  $('baseTs').textContent=L.ts||d.generated_at||'-';
+  if(!d.sample&&L.ts){ // 기준시각(한국시간)이 45분 이상 지났으면 지연 표시
+    const age=(Date.now()-new Date(L.ts.replace(' ','T')+':00+09:00').getTime())/60000;
+    if(age>45){st.className='live err';$('liveTxt').textContent='업데이트 지연 · '+(age>=120?Math.round(age/60)+'시간':Math.round(age)+'분')+' 전';}
+  }
+  const n=$('notice');
+  if(d.sample){n.innerHTML='<b>샘플 데이터 미리보기입니다.</b> 수집기(collector.py)를 실행한 뒤 <b>http://127.0.0.1:8000</b> 으로 열면 KPX 실데이터로 바뀝니다. 지금 보이는 수치는 화면 구성을 보여주기 위한 가상의 값입니다.';n.classList.add('show')}
+  else n.classList.remove('show');
+
+  // KPI
+  const maxDem=Math.max(...sup.map(r=>r.demand||0),0);
+  $('kDemand').textContent=fmt(L.demand); $('kDemandSub').textContent='오늘 최대예측 '+fmt(L.forecast)+' MW · 현재까지 최대 '+fmt(maxDem);
+  setBar('bDemand',L.forecast?L.demand/L.forecast*100:0);
+  $('kSupply').textContent=fmt(L.supply); $('kSupplySub').textContent='수요 대비 여유 '+fmt(L.supply&&L.demand?(L.supply-L.demand):null)+' MW';
+  setBar('bSupply',L.supply?L.demand/L.supply*100:0);
+  const [sn,sc]=stageOf(L.reserve==null?99999:L.reserve); const sEl=$('kStage'); sEl.textContent=sn; sEl.style.background=sc;
+  $('kReserve').textContent=fmt(L.reserve); $('kReserveSub').textContent='예비율 '+fmt(L.reserve_rate,1)+'% · 운영예비력 '+fmt(L.oper_reserve)+' MW';
+  setBar('bReserve',(L.reserve_rate||0)/40*100);
+  const sm=d.smp_today, hr=new Date().getHours(), smpNow=sm&&sm.mainland?(sm.mainland[hr]??sm.mainland.filter(v=>v!=null).slice(-1)[0]):null;
+  const smpVals=sm&&sm.mainland?sm.mainland.filter(v=>v!=null):[]; const smpAvg=smpVals.length?smpVals.reduce((a,b)=>a+b,0)/smpVals.length:null;
+  $('kSmp').textContent=fmt(smpNow,2); $('kSmpSub').textContent='오늘 평균 '+fmt(smpAvg,2)+' · 최고 '+fmt(smpVals.length?Math.max(...smpVals):null,2);
+  setBar('bSmp',smpNow&&smpVals.length?smpNow/Math.max(...smpVals)*100:0);
+  const gasShare=G.total?G.gas/G.total*100:null;
+  $('kGas').textContent=fmt(G.gas); $('kGasSub').textContent='발전 비중 '+fmt(gasShare,1)+'% · '+hhmm(G.ts)+' 기준';
+  setBar('bGas',gasShare||0);
+  const solarMax=Math.max(...gen.map(r=>r.solar||0),0);
+  $('kSolar').textContent=fmt(G.solar); $('kSolarSub').textContent='오늘 최대 '+fmt(solarMax)+' MW · 비중 '+fmt(G.total?G.solar/G.total*100:null,1)+'%';
+  setBar('bSolar',solarMax?(G.solar||0)/solarMax*100:0);
+
+  // 수요·공급·순부하
+  const gmap={}; gen.forEach(r=>gmap[hhmm(r.ts)]=r);
+  const labels=sup.map(r=>hhmm(r.ts));
+  const net=sup.map(r=>{const g=gmap[hhmm(r.ts)];return g&&r.demand!=null?r.demand-(g.solar||0)-(g.renew||0):null});
+  upsert('cSupply',{type:'line',data:{labels,datasets:[
+    {label:'공급능력',data:sup.map(r=>r.supply),borderColor:C.slate,borderWidth:2,borderDash:[6,4]},
+    {label:'현재수요',data:sup.map(r=>r.demand),borderColor:C.ink,borderWidth:2.6,tension:.3},
+    {label:'순부하',data:net,borderColor:C.orange,backgroundColor:'rgba(224,122,60,.1)',fill:'origin',borderWidth:2.2,tension:.3},
+    {label:'최대예측',data:sup.map(r=>r.forecast),borderColor:C.blue,borderWidth:1.5,borderDash:[2,3]}
+  ]},options:{plugins:{tooltip:tipMW,legend:{position:'top',align:'end'}},scales:{x:{ticks:{maxTicksLimit:12,maxRotation:0}},y:{ticks:kTick}}}});
+
+  // 발전원 구성 도넛
+  const present=FUELS.filter(f=>(G[f[0]]||0)>0);
+  $('mixTs').textContent=G.ts?hhmm(G.ts)+' 기준'+((G.pumped||0)<0?' · 양수 충전 '+fmt(-G.pumped)+' MW':''):'-';
+  upsert('cMix',{type:'doughnut',data:{labels:present.map(f=>f[1]),datasets:[{data:present.map(f=>G[f[0]]),backgroundColor:present.map(f=>f[2]),borderColor:'#fff',borderWidth:2,hoverOffset:10}]},
+    options:{cutout:'60%',plugins:{legend:{position:'right',labels:{generateLabels:ch=>{const T=ch.data.datasets[0].data.reduce((x,y)=>x+y,0);return ch.data.labels.map((l,i)=>({text:l+'  '+fmt(ch.data.datasets[0].data[i]/T*100,1)+'%',fillStyle:ch.data.datasets[0].backgroundColor[i],strokeStyle:'#fff',pointStyle:'circle',index:i}))}}},
+      tooltip:{mode:'nearest',callbacks:{label:c=>' '+c.label+': '+fmt(c.parsed)+' MW'}}}}});
+
+  // 발전원 누적
+  upsert('cGen',{type:'line',data:{labels:gen.map(r=>hhmm(r.ts)),datasets:FUELS.map((f,i)=>({label:f[0]==='pumped'?'양수(발전)':f[1],data:gen.map(r=>r[f[0]]==null?null:Math.max(0,r[f[0]])),borderColor:f[2],backgroundColor:f[2]+'CC',fill:i===0?'origin':'-1',borderWidth:1,tension:.3}))},
+    options:{plugins:{tooltip:tipMW,legend:{position:'top',align:'end',labels:{font:{size:10.5}}}},scales:{x:{ticks:{maxTicksLimit:10,maxRotation:0}},y:{stacked:true,beginAtZero:true,ticks:kTick}}}});
+
+  // 예비력
+  const lim=(v)=>labels.map(()=>v);
+  upsert('cReserve',{type:'line',data:{labels,datasets:[
+    {label:'공급예비력',data:sup.map(r=>r.reserve),borderColor:C.olive,backgroundColor:'rgba(142,158,91,.15)',fill:'origin',borderWidth:2.4,tension:.3},
+    {label:'준비 5.5GW',data:lim(5500),borderColor:'#C2B43A',borderWidth:1.2,borderDash:[3,3]},
+    {label:'경계 2.5GW',data:lim(2500),borderColor:C.bad,borderWidth:1.2,borderDash:[3,3]}
+  ]},options:{plugins:{tooltip:tipMW,legend:{position:'top',align:'end'}},scales:{x:{ticks:{maxTicksLimit:8,maxRotation:0}},y:{beginAtZero:true,ticks:kTick}}}});
+
+  // SMP
+  const st2=d.smp_tomorrow, H=[...Array(24)].map((_,i)=>(i+1)+'시');
+  $('smpTag').textContent=st2?'오늘 · 내일(공개됨)':'오늘';
+  upsert('cSmp',{data:{labels:H,datasets:[
+    {type:'line',label:'예측수요(총)',data:sm?sm.fcst_total:[],borderColor:C.slate,borderWidth:1.6,borderDash:[5,4],yAxisID:'y2',tension:.3},
+    {type:'line',label:'제주 SMP',data:sm?sm.jeju:[],borderColor:C.olive,borderWidth:2,tension:.3,pointRadius:2},
+    {type:'line',label:'내일 육지 SMP',data:st2?st2.mainland:[],borderColor:C.blueD,borderWidth:2,borderDash:[6,4],tension:.3},
+    {type:'bar',label:'육지 SMP',data:sm?sm.mainland:[],backgroundColor:H.map((_,i)=>i===hr?C.orange:'rgba(224,122,60,.55)'),borderRadius:4}
+  ]},options:{plugins:{legend:{position:'top',align:'end'},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+(c.dataset.yAxisID==='y2'?fmt(c.parsed.y)+' MW':fmt(c.parsed.y,2)+' 원')}}},
+    scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:12}},y:{title:{display:true,text:'원/kWh'}},y2:{position:'right',grid:{display:false},ticks:kTick}}}});
+
+  // LNG 패널: 시간평균 가스 출력 vs SMP
+  const gasH=[...Array(24)].map(()=>[]);
+  gen.forEach(r=>{const t=hhmm(r.ts);if(!t)return;const m=+t.slice(0,2)*60+ +t.slice(3,5);const idx=Math.max(1,Math.ceil(m/60))-1;if(r.gas!=null)gasH[Math.min(23,idx)].push(r.gas)});
+  const gasAvg=gasH.map(a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null);
+  upsert('cLng',{data:{labels:H,datasets:[
+    {type:'line',label:'육지 SMP',data:sm?sm.mainland:[],borderColor:C.orange,borderWidth:2.2,tension:.3,yAxisID:'y2',pointRadius:2},
+    {type:'bar',label:'가스 출력(시간평균)',data:gasAvg,backgroundColor:C.blueD,borderRadius:3}
+  ]},options:{plugins:{legend:{position:'top',align:'end'},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+(c.dataset.yAxisID==='y2'?fmt(c.parsed.y,2)+' 원':fmt(c.parsed.y)+' MW')}}},
+    scales:{x:{grid:{display:false},ticks:{maxRotation:0,maxTicksLimit:8}},y:{ticks:kTick},y2:{position:'right',grid:{display:false}}}}});
+  const gv=gen.map(r=>r.gas).filter(v=>v!=null);
+  $('mGasMax').textContent=gv.length?fmt(Math.max(...gv))+' MW':'-';
+  $('mGasSwing').textContent=gv.length?fmt(Math.max(...gv)-Math.min(...gv))+' MW':'-';
+  const pairs=gasAvg.map((g,i)=>[g,sm&&sm.mainland?sm.mainland[i]:null]).filter(p=>p[0]!=null&&p[1]!=null);
+  let r='-';
+  if(pairs.length>=4){const mx=pairs.reduce((a,p)=>a+p[0],0)/pairs.length,my=pairs.reduce((a,p)=>a+p[1],0)/pairs.length;
+    let sxy=0,sx=0,sy=0;pairs.forEach(([x,y])=>{sxy+=(x-mx)*(y-my);sx+=(x-mx)**2;sy+=(y-my)**2});r=sx&&sy?(sxy/Math.sqrt(sx*sy)).toFixed(2):'-';}
+  $('mCorr').textContent=r;
+
+  // 일별 추이
+  const hs=d.history||[];
+  upsert('cHist',{data:{labels:hs.map(h=>h.date.slice(5)),datasets:[
+    {type:'line',label:'최소 예비율(%)',data:hs.map(h=>h.min_reserve_rate),borderColor:C.olive,borderWidth:2.2,tension:.3,yAxisID:'y2',pointRadius:2},
+    {type:'line',label:'가스 비중(%)',data:hs.map(h=>h.gas_share),borderColor:C.blueD,borderWidth:1.8,borderDash:[5,4],tension:.3,yAxisID:'y2'},
+    {type:'bar',label:'최대수요',data:hs.map(h=>h.max_demand),backgroundColor:'rgba(30,41,56,.75)',borderRadius:3,maxBarThickness:22}
+  ]},options:{plugins:{legend:{position:'top',align:'end'},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+(c.dataset.yAxisID==='y2'?fmt(c.parsed.y,1)+'%':fmt(c.parsed.y)+' MW')}}},
+    scales:{x:{grid:{display:false},ticks:{maxRotation:0,maxTicksLimit:10}},y:{ticks:kTick},y2:{position:'right',min:0,grid:{display:false},ticks:{callback:v=>v+'%'}}}}});
+
+  // 기록
+  const R=d.records||{};
+  const item=(k,o,u,dec,col)=>'<div class="rec" style="border-color:'+col+'"><div class="k">'+k+'</div><b>'+(o?fmt(o.v,dec)+' <small style="font-size:11px;color:#8A93A0">'+u+'</small>':'-')+'</b><span>'+(o?o.t:'데이터 없음')+'</span></div>';
+  $('recs').innerHTML=item('최대수요',R.max_demand,'MW',0,C.ink)+item('최저 공급예비력',R.min_reserve,'MW',0,C.bad)+item('최대 가스 출력',R.max_gas,'MW',0,C.blueD)
+    +item('최대 태양광',R.max_solar,'MW',0,C.mustard)+item('최고 SMP(육지)',R.max_smp,'원/kWh',2,C.orange)+item('최저 SMP(육지)',R.min_smp,'원/kWh',2,C.olive);
+  $('recSince').textContent=R.since?R.since.slice(0,10)+' 이후 수집분':'-';
+  renderKepco(d.kepco, d.sample);
+}
+
+function renderKepco(K, isSample){
+  const n=$('kpNotice');
+  if(!K){n.innerHTML='한전 통계가 아직 없습니다. 한국전력 전력데이터 개방포털에서 <b>API 인증키</b>를 발급받아 <b>config.ini [kepco] api_key</b>에 넣으면 하루 1회 자동 수집됩니다.';n.classList.add('show');
+    ['kUnit','kUsage','kInd','kRen'].forEach(id=>$(id).parentElement.classList.add('noData'));return;}
+  n.classList.toggle('show',!!isSample); if(isSample) n.innerHTML='<b>샘플 데이터</b>입니다. 한전 API 키를 넣고 수집기를 실행하면 실제 통계로 바뀝니다.';
+  const ym=s=>s?s.slice(0,4)+'.'+s.slice(4):'-';
+  const lab=K.months.map(m=>m.slice(2,4)+'.'+m.slice(4));
+  $('kpMonth').textContent='최근 공개월 '+ym(K.last);
+  const L=K.months.length-1, Pi=K.prev_year?K.months.indexOf(K.prev_year):-1;
+  const chg=(a,b)=>a!=null&&b?((a/b-1)*100):null;
+  const tag=v=>v==null?'':(' · 전년 동월 대비 <span class="'+(v>=0?'up':'dn')+'">'+(v>=0?'+':'')+v.toFixed(1)+'%</span>');
+  $('kpUsage').textContent=fmt(K.total_usage[L]/1e9,2); $('kpUsageSub').innerHTML=ym(K.last)+tag(Pi>=0?chg(K.total_usage[L],K.total_usage[Pi]):null);
+  $('kpUnit').textContent=fmt(K.total_unit[L],1); $('kpUnitSub').innerHTML=ym(K.last)+tag(Pi>=0?chg(K.total_unit[L],K.total_unit[Pi]):null);
+  const cu=k=>K.contract[k]?K.contract[k].unit:null;
+  const ind=cu('산업용'),res=cu('주택용');
+  $('kpInd').textContent=ind?fmt(ind[L],1):'-'; $('kpIndSub').innerHTML=ind?ym(K.last)+tag(Pi>=0?chg(ind[L],ind[Pi]):null):'-';
+  $('kpRes').textContent=res?fmt(res[L],1):'-'; $('kpResSub').innerHTML=res?ym(K.last)+tag(Pi>=0?chg(res[L],res[Pi]):null):'-';
+  const pal={'산업용':C.blueD,'일반용':C.orange,'주택용':C.olive,'농사용':C.mustard,'교육용':C.slate,'심야':'#5A4E44','가로등':C.taupe};
+  const top=Object.keys(K.contract);
+  const main=['산업용','일반용','주택용'].filter(k=>K.contract[k]);
+  upsert('kUnit',{type:'line',data:{labels:lab,datasets:[
+    {label:'전체 평균',data:K.total_unit,borderColor:C.ink,borderWidth:2.8,tension:.3,pointRadius:2}].concat((main.length?main:top.slice(0,3)).map(k=>({label:k,data:K.contract[k].unit,borderColor:pal[k]||C.blue,borderWidth:2,tension:.3,borderDash:k==='주택용'?[5,4]:[]})))},
+    options:{plugins:{legend:{position:'top',align:'end'},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fmt(c.parsed.y,1)+' 원/kWh'}}},scales:{x:{grid:{display:false},ticks:{maxRotation:0,maxTicksLimit:12}}}}});
+  upsert('kUsage',{type:'bar',data:{labels:lab,datasets:top.map(k=>({label:k,data:K.contract[k].usage.map(v=>v==null?null:v/1e9),backgroundColor:pal[k]||C.blue,stack:'u'}))},
+    options:{plugins:{legend:{position:'top',align:'end',labels:{font:{size:10.5}}},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fmt(c.parsed.y,2)+' TWh'}}},scales:{x:{stacked:true,grid:{display:false},ticks:{maxRotation:0,maxTicksLimit:12}},y:{stacked:true}}}});
+  const I=(K.indus||[]).slice(0,10);
+  $('kIndTag').textContent=ym(K.last)+' · 전년 동월 대비';
+  upsert('kInd',{type:'bar',data:{labels:I.map(r=>r.biz.length>12?r.biz.slice(0,12)+'…':r.biz),datasets:[{label:'사용량',data:I.map(r=>r.usage/1e6),backgroundColor:I.map(r=>r.yoy!=null&&r.yoy>=5?C.orange:C.blueD),borderRadius:4,barPercentage:.75}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>I[c[0].dataIndex].biz,label:c=>' '+fmt(c.parsed.x)+' GWh',afterLabel:c=>{const r=I[c.dataIndex];return (r.yoy!=null?' 전년 동월 대비 '+(r.yoy>=0?'+':'')+r.yoy+'%':'')+(r.unit?'\n 판매단가 '+fmt(r.unit,1)+' 원/kWh':'')}}}},scales:{x:{ticks:{callback:v=>fmt(v)}},y:{grid:{display:false}}}}});
+  const RN=(K.renew||[]).filter(r=>r.capacity>0);
+  $('kRenTag').textContent=K.renew_year?K.renew_year+'년 · 발전원별 설비용량':'-';
+  const rp=[C.mustard,C.olive,C.blue,C.taupe,'#6FB1C0',C.slate,C.orange,'#9CC9D3'];
+  upsert('kRen',{type:'doughnut',data:{labels:RN.map(r=>r.gensrc),datasets:[{data:RN.map(r=>r.capacity/1000),backgroundColor:RN.map((_,i)=>rp[i%rp.length]),borderColor:'#fff',borderWidth:2,hoverOffset:10}]},
+    options:{cutout:'58%',plugins:{legend:{position:'right',labels:{generateLabels:ch=>{const t=ch.data.datasets[0].data.reduce((a,b)=>a+b,0);return ch.data.labels.map((l,i)=>({text:l+'  '+fmt(ch.data.datasets[0].data[i],0)+' MW ('+fmt(ch.data.datasets[0].data[i]/t*100,1)+'%)',fillStyle:ch.data.datasets[0].backgroundColor[i],strokeStyle:'#fff',pointStyle:'circle',index:i}))}}},
+      tooltip:{mode:'nearest',callbacks:{label:c=>' '+c.label+': '+fmt(c.parsed)+' MW · '+fmt(RN[c.dataIndex].cnt)+'개소'}}}}});
+}
+
+/* ---------- 데이터 로드 ---------- */
+let left=60;
+async function load(){
+  try{
+    if(location.protocol==='file:') throw new Error('file');
+    const r=await fetch('data/dashboard.json?t='+Date.now(),{cache:'no-store'});
+    if(!r.ok) throw new Error('http '+r.status);
+    const d=await r.json(); render(d);
+  }catch(e){
+    if(!charts.cSupply) render(sample());
+    else { $('live').className='live err'; $('liveTxt').textContent='수집기 응답 없음'; }
+  }
+  left=60;
+}
+setInterval(()=>{left--; $('cd').textContent=left; if(left<=0) load();},1000);
+$('bRefresh').onclick=load;
+
+/* ---------- 마우스 반응 ---------- */
+const glow=$('glow');
+document.addEventListener('mousemove',e=>{glow.style.transform='translate('+e.clientX+'px,'+e.clientY+'px)'});
+document.querySelectorAll('.tilt').forEach(el=>{
+  el.addEventListener('mousemove',e=>{const r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+    el.style.setProperty('--ry',((x-.5)*10).toFixed(2)+'deg');el.style.setProperty('--rx',((.5-y)*8).toFixed(2)+'deg');el.style.setProperty('--mx',x*100+'%');el.style.setProperty('--my',y*100+'%')});
+  el.addEventListener('mouseleave',()=>{el.style.setProperty('--rx','0deg');el.style.setProperty('--ry','0deg')});
+});
+load();
+})();
+</script>
+</body>
+</html>
