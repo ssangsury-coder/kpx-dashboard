@@ -24,7 +24,7 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - name: 코드 내려받기
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 지난 누적 데이터 불러오기 (data 브랜치)
         run: |
@@ -37,7 +37,7 @@ jobs:
           fi
 
       - name: 파이썬 준비
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -63,10 +63,10 @@ jobs:
           cp dashboard.html _site/index.html
           cp data/dashboard.json _site/data/dashboard.json
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - name: GitHub Pages 배포
         id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
