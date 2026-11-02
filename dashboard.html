@@ -257,8 +257,12 @@ function render(d){
     if(age>45){st.className='live err';$('liveTxt').textContent='업데이트 지연 · '+(age>=120?Math.round(age/60)+'시간':Math.round(age)+'분')+' 전';}
   }
   const n=$('notice');
-  if(d.sample){n.innerHTML='<b>샘플 데이터 미리보기입니다.</b> 수집기(collector.py)를 실행한 뒤 <b>http://127.0.0.1:8000</b> 으로 열면 KPX 실데이터로 바뀝니다. 지금 보이는 수치는 화면 구성을 보여주기 위한 가상의 값입니다.';n.classList.add('show')}
-  else n.classList.remove('show');
+  const errs=(d.errors||[]);
+  if(!d.sample&&errs.length){
+    n.innerHTML='<b>⚠ 수집 오류 '+errs.length+'건</b> · 아래 메시지를 확인하세요.'+(L.ts?'':' (아직 수집된 데이터가 없습니다)')+'<br>'+errs.map(e=>'· <b>'+e.job+'</b>: '+String(e.msg).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))).join('<br>');
+    n.classList.add('show'); n.style.background='#FBE3DE'; n.style.borderColor='#E8A99B'; n.style.color='#8E2A18';
+  } else if(d.sample){n.innerHTML='<b>샘플 데이터 미리보기입니다.</b> 수집기(collector.py)를 실행한 뒤 <b>http://127.0.0.1:8000</b> 으로 열면 KPX 실데이터로 바뀝니다. 지금 보이는 수치는 화면 구성을 보여주기 위한 가상의 값입니다.';n.classList.add('show')}
+  else { n.classList.remove('show'); n.style.cssText=''; }
 
   // KPI
   const maxDem=Math.max(...sup.map(r=>r.demand||0),0);

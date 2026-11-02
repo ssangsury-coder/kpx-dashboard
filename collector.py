@@ -158,7 +158,9 @@ def call_api(cfg, name, params=None, rows=300):
         body = e.read().decode("utf-8", "replace")[:300]
         raise ApiError("HTTP %s: %s" % (e.code, body))
     except urllib.error.URLError as e:
-        raise ApiError("네트워크 오류: %s" % e.reason)
+        raise ApiError("네트워크 오류: %s (해외 서버에서의 접속 차단 여부 확인 필요)" % e.reason)
+    except (TimeoutError, ConnectionError, OSError) as e:
+        raise ApiError("접속 실패: %s (해외 서버에서의 접속 차단 여부 확인 필요)" % e)
 
     if text.startswith("<"):
         code, msg, items = _parse_xml(text)
@@ -350,7 +352,9 @@ def call_kepco(cfg, name, params):
     except urllib.error.HTTPError as e:
         raise ApiError("HTTP %s: %s" % (e.code, e.read().decode("utf-8", "replace")[:200]))
     except urllib.error.URLError as e:
-        raise ApiError("네트워크 오류: %s" % e.reason)
+        raise ApiError("네트워크 오류: %s (해외 서버에서의 접속 차단 여부 확인 필요)" % e.reason)
+    except (TimeoutError, ConnectionError, OSError) as e:
+        raise ApiError("접속 실패: %s (해외 서버에서의 접속 차단 여부 확인 필요)" % e)
     if text.startswith("<"):
         try:
             root = ET.fromstring(text)
@@ -393,6 +397,7 @@ def collect_kepco(cfg, con):
     """최근 N개월 월간 통계 중 아직 없는 달(또는 최근 3개월)만 받아 호출 횟수를 줄입니다."""
     if not cfg.get("kepco", "api_key"):
         return 0
+    fails, ok_calls, last_err = 0, 0, None
     now = datetime.now(KST)
     back = max(3, int(cfg.get("kepco", "months_back")))
     done = {(a, p): n for a, p, n in con.execute("SELECT api, period, rows FROM kepco_done")}
@@ -410,7 +415,11 @@ def collect_kepco(cfg, con):
                 rows = call_kepco(cfg, api, {"year": m[:4], "month": m[4:]})
             except ApiError as e:
                 log.warning("한전 %s %s 실패: %s", api, m, e)
+                fails += 1; last_err = e
+                if fails >= 4 and ok_calls == 0:
+                    raise ApiError("한전 API 연속 실패 - " + str(e))
                 continue
+            ok_calls += 1
             agg = _national(rows, cat)
             table = "kepco_cntr" if api == "cntr" else "kepco_indus"
             for k, o in agg.items():
@@ -434,7 +443,9 @@ def collect_kepco(cfg, con):
             rows = call_kepco(cfg, "renew", {"year": y})
         except ApiError as e:
             log.warning("한전 신재생 %s 실패: %s", y, e)
+            fails += 1; last_err = e
             continue
+        ok_calls += 1
         agg = {}
         seen_metro = set()
         for r in rows:
@@ -456,6 +467,8 @@ def collect_kepco(cfg, con):
             con.execute("INSERT OR REPLACE INTO kepco_done VALUES(?,?,?,?)", ("renew", y, len(agg), now.strftime("%Y-%m-%d %H:%M")))
         n += len(agg)
         con.commit()
+    if ok_calls == 0 and fails:
+        raise ApiError(str(last_err))
     return n
 
 
@@ -572,6 +585,7 @@ def build_json(con):
         "records": records,
         "fuel_labels": {col: ko for _, col, ko in FUEL},
         "kepco": kepco_json(con),
+        "errors": [{"job": k[4:], "msg": v} for k, v in con.execute("SELECT k, v FROM meta WHERE k LIKE 'err:%' ORDER BY k")],
     }
     tmp = JSON_PATH + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
@@ -608,16 +622,30 @@ class Collector(threading.Thread):
                 else:
                     row = con.execute("SELECT v FROM meta WHERE k=?", (key,)).fetchone()
                     nxt = float(row[0]) if row else 0
+                    # 아직 받은 데이터가 없으면 예약과 상관없이 바로 시도
+                    empty_sql = {"SMP": "SELECT COUNT(*) FROM smp WHERE date=?",
+                                 "한전 통계": "SELECT COUNT(*) FROM kepco_cntr WHERE ?<>''"}.get(name)
+                    if empty_sql and con.execute(empty_sql, (datetime.now(KST).strftime("%Y-%m-%d"),)).fetchone()[0] == 0:
+                        nxt = 0
             if force or time.time() >= nxt:
+                ok = False
                 try:
                     n = fn(self.cfg, con)
                     log.info("%s 수집 완료 (%d건)", name, n)
-                    changed = True
+                    ok = True
+                    con.execute("DELETE FROM meta WHERE k=?", ("err:" + name,))
                 except ApiError as e:
                     log.error("%s 수집 실패: %s", name, e)
-                except Exception:
+                    con.execute("INSERT OR REPLACE INTO meta VALUES(?,?)", ("err:" + name,
+                                datetime.now(KST).strftime("%m-%d %H:%M") + " | " + str(e)[:300]))
+                except Exception as e:
                     log.exception("%s 수집 중 예외", name)
-                job[3] = time.time() + every
+                    con.execute("INSERT OR REPLACE INTO meta VALUES(?,?)", ("err:" + name,
+                                datetime.now(KST).strftime("%m-%d %H:%M") + " | " + repr(e)[:300]))
+                con.commit()
+                changed = True
+                # 실패하면 다음 실행 때 바로 다시 시도 (정상일 때만 주기만큼 미룸)
+                job[3] = time.time() + (every if ok else 0)
                 if persist and every >= 3600:
                     con.execute("INSERT OR REPLACE INTO meta VALUES(?,?)", (key, str(job[3])))
                     con.commit()
