@@ -350,7 +350,10 @@ def call_kepco(cfg, name, params):
         with urllib.request.urlopen(req, timeout=60) as r:
             text = r.read().decode("utf-8", "replace").strip()
     except urllib.error.HTTPError as e:
-        raise ApiError("HTTP %s: %s" % (e.code, e.read().decode("utf-8", "replace")[:200]))
+        body = e.read().decode("utf-8", "replace")
+        if e.code == 404 and "NotFound" in body:
+            return []  # 아직 공개되지 않은 달·연도 → 오류가 아니라 '데이터 없음'
+        raise ApiError("HTTP %s: %s" % (e.code, body[:200]))
     except urllib.error.URLError as e:
         raise ApiError("네트워크 오류: %s (해외 서버에서의 접속 차단 여부 확인 필요)" % e.reason)
     except (TimeoutError, ConnectionError, OSError) as e:
